@@ -1,0 +1,6 @@
+**/_ccsp_temp
+*.pyc
+externals
+**/__pycache__
+output*
+.*sw[op]
