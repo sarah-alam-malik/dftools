@@ -18,6 +18,22 @@ def fc_poisson_efficiency_interval(total, passed, level=0.68):
     return down, up
 
 def poisson_interval(counts, scale=1, level=0.68):
+    """
+    Determine the up and down variations for the poisson interval (possibly
+    scaled).
+
+    Parameters
+    ----------
+    counts : ndarray-like
+        The counts or effective number of entries in histogrammed bins
+
+    scale : ndarray-like
+        Scale to give to the gamma distribution interval for weighted events.
+        Should be equivalent to sum_w/neff.
+
+    level : float (default 0.68)
+        The coverage interval. Default is 68%, i.e. near 1 sigma.
+    """
     if np.isscalar(counts):
         _counts = np.array([counts])
     elif isinstance(counts, list):
