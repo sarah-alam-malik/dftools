@@ -1,10 +1,13 @@
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .stats import poisson_interval
 
 __all__ = [
-    "cms_label", "legend_data_mc", "data_mc", "data", "mc",
+    "cms_label", "legend_data_mc", "data_mc", "data", "mc", "heatmap",
+    "annotate_heatmap",
+    "process_names", "process_colours",
 ]
 
 def cms_label(ax, label, lumi=35.9, energy=13):
@@ -17,32 +20,38 @@ def cms_label(ax, label, lumi=35.9, energy=13):
         ha='right', va='bottom', transform=ax.transAxes,
     )
 
-def legend_data_mc(ax, df_data, df_mc, label, offaxis=True, legend_kw={}):
+def legend_data_mc(
+    ax, df_data, df_mc, label, add_ratios=True, offaxis=True, legend_kw={},
+):
     handles, labels = ax[0].get_legend_handles_labels()
 
-    # sort by process total
-    tdf_mc = pd.pivot_table(
-        df_mc, index=label, columns="parent",
-        values="sum_w", aggfunc=np.sum,
-    )
-    tdf_mc = tdf_mc[tdf_mc.sum(axis=0).sort_values().index]
+    if add_ratios:
+        # sort by process total
+        tdf_mc = pd.pivot_table(
+            df_mc, index=label, columns="parent",
+            values="sum_w", aggfunc=np.sum,
+        )
+        tdf_mc = tdf_mc[tdf_mc.sum(axis=0).sort_values().index]
 
-    data_idx = labels.index("Data")
-    data_label = labels.pop(data_idx)
-    labels = (labels+[data_label])[::-1]
-    data_handle = handles.pop(data_idx)
-    handles = (handles+[data_handle])[::-1]
+        data_idx = labels.index("Data")
+        data_label = labels.pop(data_idx)
+        labels = (labels+[data_label])[::-1]
+        data_handle = handles.pop(data_idx)
+        handles = (handles+[data_handle])[::-1]
 
-    df_data_sum = df_data.sum()
-    tdf_mc_sum = tdf_mc.sum()
+        df_data_sum = df_data.sum()
+        tdf_mc_sum = tdf_mc.sum()
 
-    fractions = [
-        df_data_sum["sum_w"]/tdf_mc_sum.sum(), 1.,
-    ] + list((tdf_mc_sum / tdf_mc_sum.sum()).values[::-1])
-    fraction_labels = [
-        "{:.3f} {}".format(fractions[idx], labels[idx])
-        for idx in range(len(labels))
-    ]
+        fractions = [
+            df_data_sum["sum_w"]/tdf_mc_sum.sum(), 1.,
+        ] + list((tdf_mc_sum / tdf_mc_sum.sum()).values[::-1])
+        fraction_labels = [
+            "{:.3f} {}".format(fractions[idx], labels[idx])
+            for idx in range(len(labels))
+        ]
+    else:
+        handles = handles[::-1]
+        fraction_labels = labels[::-1]
 
     kwargs = dict(legend_kw)
     kwargs_noloc = dict(kwargs)
@@ -122,8 +131,8 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
 
 def data_mc(
     ax, df_data, df_mc, label, bins, blind=False, log=True, legend=True,
-    ratio=True, sm_total=True, mcstat_top=False, mc_kw={}, mcstat_kw={}, sm_kw={}, data_kw={},
-    proc_kw={}, legend_kw={}, cms_kw={},
+    ratio=True, sm_total=True, mcstat_top=False, add_ratios=True, mc_kw={},
+    mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={}, legend_kw={}, cms_kw={},
 ):
     if blind:
         df_data = df_data*0.
@@ -169,7 +178,7 @@ def data_mc(
 
     # SM total ratio - bottom panel
     df_mc_sum_ratio = df_mc_sum.copy()
-    df_mc_sum_ratio.loc[:,"count"] = df_mc_sum["count"]
+    #df_mc_sum_ratio.loc[:,"count"] = df_mc_sum["count"]
     df_mc_sum_ratio.loc[:,"sum_w"] = 1.
     df_mc_sum_ratio.loc[:,"sum_ww"] = df_mc_sum["sum_ww"]/df_mc_sum["sum_w"]**2
 
@@ -188,7 +197,7 @@ def data_mc(
             kwargs = dict(data_kw)
             kwargs["label"] = ""
             df_data_ratio = df_data.copy()
-            df_data_ratio.loc[:,"count"] = df_data["count"]
+            #df_data_ratio.loc[:,"count"] = df_data["count"]
             df_data_ratio.loc[:,"sum_w"] = df_data["sum_w"]/df_mc_sum["sum_w"].values
             df_data_ratio.loc[:,"sum_ww"] = df_data["sum_ww"]/df_mc_sum["sum_w"].values**2
             data(ax[1], df_data_ratio, label, bins, data_kw=kwargs)
@@ -198,7 +207,138 @@ def data_mc(
             kwargs = dict(labelspacing=0.05)
             kwargs.update(legend_kw)
             legend_data_mc(
-                ax, df_data, df_mc, label, offaxis=offaxis, legend_kw=kwargs,
+                ax, df_data, df_mc, label, add_ratios=add_ratios,
+                offaxis=offaxis, legend_kw=kwargs,
             )
 
     return ax
+
+def heatmap(
+    data, row_labels, col_labels, ax, cbar_kw=dict(fraction=0.046, pad=0.04),
+    cbarlabel="", grid_kw={}, tick_kw={}, **kwargs,
+):
+    if not ax:
+        ax = plt.gca()
+
+    im = ax.imshow(data, **kwargs)
+
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_yticks(np.arange(data.shape[0]))
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+    ax.tick_params(**tick_kw)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(
+        ax.get_xticklabels(), ha="right", #rotation=-30,
+        rotation_mode="anchor",
+    )
+
+    # Turn spines off and create white grid.
+    for edge, spine in ax.spines.items():
+        spine.set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+
+    gkw = dict(which="minor", color="w", linestyle='-', linewidth=2)
+    gkw.update(grid_kw)
+    ax.grid(**gkw)
+    ax.tick_params(
+        which="minor", bottom=False, left=False, top=False, right=False,
+    )
+    ax.tick_params(
+        which="major", bottom=False, left=False, top=False, right=False,
+    )
+
+    return im, cbar
+
+def annotate_heatmap(
+    im, data=None, valfmt="{x:.2f}", textcolors=["black", "white"],
+    cthreshold=lambda z: True, vthreshold=lambda z: True, **textkw,
+):
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    kw = dict(ha="center", va="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = mpl.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            kw.update(color=textcolors[int(cthreshold(data[i, j]))])
+            if not vthreshold(data[i, j]):
+                continue
+            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            texts.append(text)
+
+    return texts
+
+
+process_colours = {
+    "SMTotal":          "black",
+    "MET":              "black",
+    "SingleMuon":       "black",
+    "SingleElectron":   "black",
+    "ZJetsToNuNu":      "#80b1d3",
+    "WJetsToLNu":       "#b3de69",
+    "WJetsToENu":       "#b2df8a",
+    "WJetsToMuNu":      "#b3de69",
+    "WJetsToTauNu":     "#8dd3c7",
+    "WJetsToTauLNu":    "#8dd3c7",
+    "WJetsToTauHNu":    "#8dd3c7",
+    "Diboson":          "#fdb462",
+    "DYJetsToLL":       "#ffed6f",
+    "DYJetsToEE":       "#fff6b3",
+    "DYJetsToMuMu":     "#ffed6f",
+    "DYJetsToTauTau":   "#ffe41a",
+    "DYJetsToTauLTauL": "#ffe41a",
+    "DYJetsToTauHTauL": "#ffe41a",
+    "DYJetsToTauHTauH": "#ffe41a",
+    "EWKV2Jets":        "#bebada",
+    "SingleTop":        "#fccde5",
+    "TTJets":           "#bc80bd",
+    "Top":              "#bc80bd",
+    "QCD":              "#fb8072",
+    "G1Jet":            "#ccebc5",
+    "VGamma":           "#ffffb3",
+    "Minor":            "#d9d9d9",
+}
+
+process_names = {
+    "SMTotal":          "SM total",
+    "MET":              "MET",
+    "SingleMuon":       "Single Muon",
+    "SingleElectron":   "Single Electron",
+    "ZJetsToNuNu":      "$Z(\\rightarrow \\nu\\nu)+j$",
+    "WJetsToLNu":       "$W(\\rightarrow l\\nu)+j$",
+    "WJetsToENu":       "$W(\\rightarrow e\\nu)+j$",
+    "WJetsToMuNu":      "$W(\\rightarrow \\mu\\nu)+j$",
+    "WJetsToTauNu":     "$W(\\rightarrow \\tau\\nu)+j$",
+    "WJetsToTauLNu":    "$W(\\rightarrow \\tau_{l}\\nu)+j$",
+    "WJetsToTauHNu":    "$W(\\rightarrow \\tau_{h}\\nu)+j$",
+    "Diboson":          "Diboson",
+    "DYJetsToLL":       "$Z/\\gamma^{*}(\\rightarrow ll)+j$",
+    "DYJetsToEE":       "$Z/\\gamma^{*}(\\rightarrow ee)+j$",
+    "DYJetsToMuMu":     "$Z/\\gamma^{*}(\\rightarrow \\mu\\mu)+j$",
+    "DYJetsToTauTau":   "$Z/\\gamma^{*}(\\rightarrow \\tau\\tau)+j$",
+    "DYJetsToTauLTauL": "$Z/\\gamma^{*}(\\rightarrow \\tau_{l}\\tau_{l})+j$",
+    "DYJetsToTauHTauL": "$Z/\\gamma^{*}(\\rightarrow \\tau_{l}\\tau_{h})+j$",
+    "DYJetsToTauHTauH": "$Z/\\gamma^{*}(\\rightarrow \\tau_{h}\\tau_{h})+j$",
+    "EWKV2Jets":        "VBS",
+    "SingleTop":        "Single Top",
+    "TTJets":           "$t\\bar{t}+j$",
+    "QCD":              "QCD multijet",
+    "G1Jet":            "$\\gamma+j$",
+    "VGamma":           "$V+\\gamma$",
+    "Minor":            "Minors",
+}

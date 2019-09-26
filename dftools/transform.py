@@ -72,3 +72,11 @@ def merge(df, merge_cfg, index_level="parent"):
     for label, match_labels in merge_cfg.items():
         tdf.loc[tdf[index_level].isin(match_labels), index_level] = label
     return tdf.groupby(index_names).sum()
+
+def merge_query(df, label_queries, index_level="parent"):
+    index_names = df.index.names
+    tdf = df.reset_index()
+    for label, query in label_queries.items():
+        mask = tdf.eval(query)
+        tdf.loc[mask, index_level] = label
+    return tdf.groupby(index_names).sum()

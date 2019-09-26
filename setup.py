@@ -19,13 +19,12 @@ setuptools.setup(
     install_requires=requirements,
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
-    classifiers=(
-        "Programming Language :: Python :: 2",
+    classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Utilities",
         "Development Status :: 3 - Alpha",
-    ),
+    ],
 )
