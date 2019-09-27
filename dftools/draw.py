@@ -312,6 +312,7 @@ process_colours = {
     "G1Jet":            "#ccebc5",
     "VGamma":           "#ffffb3",
     "Minor":            "#d9d9d9",
+    "MinorBkgs":        "#d9d9d9",
 }
 
 process_names = {
@@ -340,5 +341,115 @@ process_names = {
     "QCD":              "QCD multijet",
     "G1Jet":            "$\\gamma+j$",
     "VGamma":           "$V+\\gamma$",
-    "Minor":            "Minors",
+    "Minor":            "Minor",
+    "MinorBkgs":        "Minor",
 }
+
+nuisance_names = {
+    "d1kqcd": r'$\delta^{(1)}k_{\mathrm{QCD}}$',
+    "d2kqcd": r'$\delta^{(2)}k_{\mathrm{QCD}}$',
+    "d3kqcd": r'$\delta^{(3)}k_{\mathrm{QCD}}$',
+    "d1kew": r'$\delta^{(1)}k_{\mathrm{EW}}$',
+    "d2keww": r'$\delta^{(2)}k_{\mathrm{EW}}^{\mathrm{W}}$',
+    "d2kewz": r'$\delta^{(2)}k_{\mathrm{EW}}^{\mathrm{Z}}$',
+    "d3keww": r'$\delta^{(3)}k_{\mathrm{EW}}^{\mathrm{W}}$',
+    "d3kewz": r'$\delta^{(3)}k_{\mathrm{EW}}^{\mathrm{Z}}$',
+    "dkmix": r'$\delta k_{\mathrm{mix}}$',
+    "jesTotal": r'JES',
+    "jerSF": r'JER',
+    "unclust": r'Unclustered energy',
+    "lhePdfWeight": r'PDF',
+    "btagSF": r'$b$-tag veto',
+    "photonIdLoose": r'Photon id. veto',
+    "photonPixelSeedVeto": r'Photon pixel veto',
+    "tauIdTight": r'$\tau_h$-tag id. selection',
+    "tauIdVLoose": r'$\tau_h$-tag id. veto',
+    "muonIdLooseSyst": r'Muon id. veto (syst.)',
+    "muonIdLooseStat": r'Muon id. veto (stat.)',
+    "muonIsoLooseSyst": r'Muon iso. veto (syst.)',
+    "muonIsoLooseStat": r'Muon iso. veto (stat.)',
+    "muonIdTightSyst": r'Muon id. selection (syst.)',
+    "muonIdTightStat": r'Muon id. selection (stat.)',
+    "muonIsoTightSyst": r'Muon iso. selection (syst.)',
+    "muonIsoTightStat": r'Muon iso. selection (stat.)',
+    "eleIdIsoVeto": r'Electron id. veto',
+    "eleIdIsoTight": r'Electron id. selection',
+    "eleReco": r'Electron reconstruction',
+    "eleTrig": r'Electron trigger',
+    "prefiring": r'ECAL timing',
+    "pileup": r'Pileup',
+    "lumi": r'Luminosity',
+    "metTrig0MuSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($0\mu$)',
+    "metTrig1MuSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($1\mu$)',
+    "metTrig2MuSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($2\mu$)',
+    "metTrigReferenceTriggerSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger (ref.)',
+    "metTrigMonojetSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($\p_{\mathrm{T}}^{\mathrm{miss}}+\mathrm{jets}$)',
+    "metTrigSingleMuonSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($\mu+\mathrm{jets}$)',
+    "metTrigDoubleMuonSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($\mu\mu+\mathrm{jets}$)',
+    "metTrigSingleTauSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($\tau_h+\mathrm{jets}$)',
+    "metTrigSingleElectronSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($e+\mathrm{jets}$)',
+    "metTrigDoubleElectronSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($ee+\mathrm{jets}$)',
+}
+
+def draw_impacts(data, ax=None, converter=nuisance_names):
+    if ax is None:
+        fig, ax = plt.subplots(
+            figsize=(4,4), dpi=150,
+            ncols=2, nrows=1,
+            sharex=False, sharey=True,
+            gridspec_kw={"hspace": 0., "wspace": 0.},
+        )
+
+    ax[0].minorticks_off()
+    ax[1].minorticks_off()
+    ax[1].set_yticklabels([])
+
+    y = data["poi_paramdown"].values
+    x = np.linspace(0., len(y), len(y)+1)
+    ax[1].hist(
+        x[:-1], bins=x, weights=y,
+        color='#1f78b4', alpha=0.8,
+        orientation='horizontal',
+        label=r'$-1\sigma$',
+    )
+    y = data["poi_paramup"].values
+    ax[1].hist(
+        x[:-1], bins=x, weights=y,
+        color='#e31a1c', alpha=0.8,
+        orientation='horizontal',
+        label=r'$+1\sigma$',
+    )
+    xmax = np.max(np.abs(ax[1].get_xlim()))
+    ax[1].set_xlim(-1.1*xmax, 1.1*xmax)
+    ax[1].set_ylim(0, len(y))
+    ax[1].axvline(0, lw=1, color='gray', alpha=0.8)
+
+    y = data["param_value"].values
+    yerr = (
+        -1*data["param_merrdown"].values,
+        data["param_merrup"].values,
+    )
+    ax[0].errorbar(
+        y, (x[:-1]+x[1:])/2., xerr=yerr,
+        fmt='o', color='black',
+        ms=4, capsize=4,
+    )
+    xmax = data.eval("param_value+param_merrup").max()
+    xmax = max(xmax, data.eval("-(param_value+param_merrdown)").max())
+    xmax = int(xmax)+1
+    ax[0].set_xlim(-xmax, xmax)
+    for pos in range(xmax):
+        ax[0].axvline(pos, lw=1, color='gray', alpha=0.8)
+        ax[0].axvline(-pos, lw=1, color='gray', alpha=0.8)
+    ax[0].set_ylim(0, len(y))
+    ax[0].set_xticks(np.arange(-(xmax-1), (xmax-1)+0.1, 1.))
+    ax[0].set_yticks((x[:-1]+x[1:])/2.)
+    labels = [
+        converter.get(l, l.replace("_", " "))
+        for l in data.index.get_level_values("param").values
+    ]
+    ax[0].set_yticklabels(labels)
+    ax[0].set_xlabel(r'$\theta$')
+    ax[1].set_xlabel(r'$\Delta\hat{r}$')
+    ax[1].legend(fancybox=True, edgecolor='#d9d9d9')
+    return fig, ax
