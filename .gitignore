@@ -4,3 +4,7 @@ externals
 **/__pycache__
 output*
 .*sw[op]
+
+.vscode/
+.eggs/
+*.egg-info/
