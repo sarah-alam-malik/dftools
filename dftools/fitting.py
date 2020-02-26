@@ -422,18 +422,17 @@ class NLLModel(object):
             ])
 
         if np.isnan(params).any():
-            params[np.isnan(params)] = np.inf
-            #raise RuntimeError(
-            #    "NaN in input parameters. Previous values:\n{}\nNew values:\n{}".format(
-            #        self.parameters, params,
-            #    )
-            #)
-        #if np.isinf(params).any():
-        #    raise RuntimeError(
-        #        "Inf in input parameters. Previous values:\n{}\nNew values:\n{}".format(
-        #            self.parameters, params,
-        #        )
-        #    )
+            raise RuntimeError(
+                "NaN in input parameters. Previous values:\n{}\nNew values:\n{}".format(
+                    self.parameters, params,
+                )
+            )
+        if np.isinf(params).any():
+            raise RuntimeError(
+                "Inf in input parameters. Previous values:\n{}\nNew values:\n{}".format(
+                    self.parameters, params,
+                )
+            )
 
         for name, val in zip(self.param_names, params):
             self.parameters[name] = val
