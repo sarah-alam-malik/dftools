@@ -1,6 +1,3 @@
-import ROOT
-ROOT.gROOT.SetBatch(True)
-
 import numpy as np
 import scipy.stats
 
@@ -10,6 +7,9 @@ __all__ = [
 ]
 
 def fc_poisson_efficiency_interval(total, passed, level=0.68):
+    import ROOT
+    ROOT.gROOT.SetBatch(True)
+
     up = np.zeros(total.shape, dtype='float')
     down = np.zeros(total.shape, dtype='float')
     for idx, (tot, pas) in enumerate(zip(total, passed)):
