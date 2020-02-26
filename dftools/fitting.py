@@ -6,20 +6,8 @@ import scipy.stats
 import numdifftools
 import iminuit
 
-from cachetools.keys import hashkey
-
 from .stats import poisson_interval
 from .draw import process_colours, process_names
-
-def cache(method):
-    def cachedmethod(self, *args, **kwargs):
-        extra = self.parameters[args[-1]]
-        key = hashkey(*([method.__name__]+list(args)+[extra]))
-        if key not in self.cache:
-            result = method(self, *args, **kwargs)
-            self.cache[key] = result
-        return self.cache[key]
-    return cachedmethod
 
 class NLLModel(object):
     def __init__(

@@ -3,12 +3,9 @@ import setuptools
 with open("README.md", 'r') as fh:
     long_description = fh.read()
 
-with open("requirements.txt", 'r') as fh:
-    requirements = fh.read().splitlines()
-
 setuptools.setup(
     name="dftools",
-    version="0.2.0",
+    version="0.2.1",
     author="Shane Breeze",
     author_email="sdb15@ic.ac.uk",
     scripts=[],
@@ -16,7 +13,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
-    install_requires=requirements,
+    install_requires=[],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     classifiers=[
