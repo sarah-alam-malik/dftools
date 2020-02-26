@@ -13,7 +13,14 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
-    install_requires=[],
+    install_requires=[
+        "numpy>=1.18.1",
+        "pandas>=1.0.1",
+        "matplotlib>=3.1.2",
+        "scipy>=1.4.1",
+        "numdifftools>=0.9.39",
+        "iminuit>=1.3.8",
+    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     classifiers=[
