@@ -85,7 +85,9 @@ def data(ax, df, label, bins, data_kw={}):
     kwargs = dict(fmt='o', lw=1, color='black', label='Data')
     kwargs.update(data_kw)
 
-    down, up = poisson_interval(df["count"], scale=df["sum_w"]/df["count"])
+    #down, up = poisson_interval(df["count"], scale=df["sum_w"]/df["count"])
+    neff = df["sum_w"]**2 / df["sum_ww"]
+    down, up = poisson_interval(neff, scale=df["sum_w"]/neff)
     ax.errorbar(
         bin_cents, df["sum_w"], yerr=[df["sum_w"]-down, up-df["sum_w"]],
         **kwargs,
