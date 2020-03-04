@@ -8,3 +8,6 @@ output*
 .vscode/
 .eggs/
 *.egg-info/
+
+build/
+dist/

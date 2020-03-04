@@ -1049,7 +1049,7 @@ def confidence_interval(model, minimizer, attr, *args, **kwargs):
         model.set_parameters(params)
         result = getattr(model, attr)(*args, **kwargs)
         model.set_parameters(old_params)
-        return results
+        return result
 
     bf_params = minimizer.np_values()
 
