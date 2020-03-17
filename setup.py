@@ -5,7 +5,7 @@ with open("README.md", 'r') as fh:
 
 setuptools.setup(
     name="dftools",
-    version="0.2.1",
+    version="0.2.2",
     author="Shane Breeze",
     author_email="sdb15@ic.ac.uk",
     scripts=[],
