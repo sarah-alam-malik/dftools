@@ -1,13 +1,18 @@
+import functools
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
+import matplotlib.transforms as transforms
 import matplotlib.pyplot as plt
+import scipy.interpolate as interp
+import scipy.optimize as opt
 from .stats import poisson_interval
 
 __all__ = [
     "cms_label", "legend_data_mc", "data_mc", "data", "mc", "heatmap",
     "annotate_heatmap",
     "process_names", "process_colours",
+    "impacts", "nllscan",
 ]
 
 def cms_label(ax, label, lumi=35.9, energy=13):
@@ -393,7 +398,7 @@ nuisance_names = {
     "metTrigDoubleElectronSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($ee+\mathrm{jets}$)',
 }
 
-def draw_impacts(data, ax=None, converter=nuisance_names):
+def impacts(data, ax=None, converter=nuisance_names):
     if ax is None:
         fig, ax = plt.subplots(
             figsize=(4,4), dpi=150,
@@ -455,3 +460,128 @@ def draw_impacts(data, ax=None, converter=nuisance_names):
     ax[1].set_xlabel(r'$\Delta\hat{r}$')
     ax[1].legend(fancybox=True, edgecolor='#d9d9d9')
     return fig, ax
+
+def nllscan(
+    x, y, ax=None, marker_kw={}, spline_kw={}, splrep_kw={}, splev_kw={},
+    opt_kw={}, root_kw={}, line_kw={}, text_kw={}, nsigs=[1],
+    bestfit_guess=[0.], left_bracket=(-np.inf, 0), right_bracket=(0, np.inf),
+):
+    """
+    Helper function to plot a -2*Delta(log(L)) scan from a pd.DataFrame with
+    two columns: x variable and y variable (which should hold the
+    -2*Delta(log(L)) values.
+
+    Parameters
+    ----------
+    x : np.ndarray-like
+        The input x variable.
+
+    y : np.ndarray-like
+        The input y variable. Should hold values of -2*Delta(log(L))
+
+    ax : matplotlib.axes, optional (default=None)
+        The axis to draw on.
+
+    marker_kw : dict-like, optional (default={})
+        kwargs to pass to ax.plot. Updates a dict with:
+        dict(marker='o', ms=2, lw=0., label='Scan', color='#1f78bf')
+
+    spline_kw : dict-like, optional (default={})
+        kwargs to pass to ax.plot. Updates a dict with:
+        dict(lw=1., label='Spline', color='#e31a1c')
+
+    splrep_kw: dict-like, optional (default={})
+        kwargs to pass to scipy.interpolate.splrep. Updates a dict with:
+        dict(s=0)
+
+    splev_kw: dict-like, optional (default={})
+        kwargs to pass to scipy.interpolate.splev. Updates a dict with:
+        dict(der=0)
+
+    opt_kw: dict-like, optional (default={})
+        kwargs to pass to scipy.optimize.optimize. Updates a dict with:
+        dict(der=0)
+
+    root_kw: dict-like, optional (default={})
+        kwargs to pass to scipy.optimize.root_scalar. Updates a dict with:
+        dict(method='brentq')
+
+    line_kw: dict-like, optional (default={})
+        kwargs to pass to axes.ax?line. Updates a dict with:
+        dict(lw=1, ls='--', color='gray')
+
+    text_kw: dict-like, optional (default={})
+        kwargs to pass to axes.text. Updates a dict with:
+        ict(ha='left', va='bottom', color='gray')
+
+    nsigs : list of floats, optional (default=[1])
+        List of number of sigmas to draw on the final plot
+
+    bestfit_guess : list of floats, options (default=[0.])
+        Best fit guess of the minimum for scipy.optimize
+
+    left_bracket : tuple of floats, options (default=(-np.inf, 0))
+        Guess for left root bracket.
+
+    right_bracket : tuple of floats, options (default=(-np.inf, 0))
+        Guess for right root bracket.
+
+    Return
+    ------
+    pd.DataFrame with columns: nsig and x values
+    """
+    outdata = []
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    kw = dict(marker='o', ms=2, lw=0., label='Scan', color='#1f78bf')
+    kw.update(marker_kw)
+    ax.plot(x, y, **kw)
+
+    # spline
+    kw = dict(s=0)
+    kw.update(splrep_kw)
+    tck = interp.splrep(x, y, **kw)
+
+    kw = dict(der=0)
+    kw.update(splev_kw)
+    kw["tck"] = tck
+    func = functools.partial(interp.splev, **kw)
+
+    xfine = np.linspace(x.min(), x.max(), 201)
+    kw = dict(lw=1., label='Spline', color='#e31a1c')
+    kw.update(spline_kw)
+    ax.plot(xfine, func(xfine), **kw)
+
+    kw = dict(method='L-BFGS-B')
+    kw.update(opt_kw)
+    bestfit = opt.minimize(func, bestfit_guess, **kw)
+    outdata.append({"nsig": 0., "xval": bestfit.x[0]})
+
+    for nsig in nsigs:
+        kw = dict(method='brentq')
+        kw.update(root_kw)
+        kw["bracket"] = left_bracket
+        left = opt.root_scalar(lambda x: func(x)-nsig**2, **kw)
+        outdata.append({"nsig": nsig, "xval": left.root})
+
+        kw = dict(method='brentq')
+        kw.update(root_kw)
+        kw["bracket"] = right_bracket
+        right = opt.root_scalar(lambda x: func(x)-nsig**2, **kw)
+        outdata.append({"nsig": -nsig, "xval": right.root})
+
+        kw = dict(lw=1, ls='--', color='gray')
+        kw.update(line_kw)
+        ax.axvline(left.root, **kw)
+        ax.axvline(right.root, **kw)
+        ax.axhline(nsig**2, **kw)
+
+        pos = ax.transData.inverted().transform(
+            ax.transAxes.transform((0.025, 1))
+        )
+        kw = dict(ha='left', va='bottom', color='gray')
+        kw.update(text_kw)
+        ax.text(pos[0], nsig**2, f'${nsig}\\sigma$', **kw)
+
+    return pd.DataFrame(outdata)
