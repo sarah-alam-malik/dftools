@@ -90,7 +90,6 @@ def data(ax, df, label, bins, data_kw={}):
     kwargs = dict(fmt='o', lw=1, color='black', label='Data')
     kwargs.update(data_kw)
 
-    #down, up = poisson_interval(df["count"], scale=df["sum_w"]/df["count"])
     neff = df["sum_w"]**2 / df["sum_ww"]
     down, up = poisson_interval(neff, scale=df["sum_w"]/neff)
     ax.errorbar(
@@ -99,7 +98,7 @@ def data(ax, df, label, bins, data_kw={}):
     )
 
 def mc(
-    ax, df, label, bins, 
+    ax, df, label, bins,
     mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}, zorder=0,
 ):
     bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
@@ -141,14 +140,11 @@ def mc(
         )
 
 def data_mc(
-    ax, df_data, df_mc, label, bins, sigs=[], blind=False, log=True, legend=True,
-    ratio=True, sm_total=True, mcstat_top=False, add_ratios=True, mc_kw={},
-    sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={}, legend_kw={}, 
-    cms_kw={},
+    ax, df_data, df_mc, label, bins, sigs=[], blind=False, log=True,
+    legend=True, ratio=True, sm_total=True, mcstat_top=False, add_ratios=True,
+    mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
+    legend_kw={}, cms_kw={},
 ):
-    if blind:
-        df_data = df_data*0.
-
     # collect signals if set
     sigs = sigs[::-1]
     sig_mask = ~df_mc.index.get_level_values("parent").isin(sigs)
@@ -197,7 +193,8 @@ def data_mc(
         )
 
     # Data - top panel
-    data(ax[0], df_data, label, bins, data_kw=data_kw)
+    if not blind:
+        data(ax[0], df_data, label, bins, data_kw=data_kw)
 
     # CMS label - top panel
     kwargs = dict(label="Preliminary", lumi=35.9, energy=13)
@@ -206,7 +203,6 @@ def data_mc(
 
     # SM total ratio - bottom panel
     df_mc_sum_ratio = df_mc_sum.copy()
-    #df_mc_sum_ratio.loc[:,"count"] = df_mc_sum["count"]
     df_mc_sum_ratio.loc[:,"sum_w"] = 1.
     df_mc_sum_ratio.loc[:,"sum_ww"] = df_mc_sum["sum_ww"]/df_mc_sum["sum_w"]**2
 
@@ -225,7 +221,6 @@ def data_mc(
             kwargs = dict(data_kw)
             kwargs["label"] = ""
             df_data_ratio = df_data.copy()
-            #df_data_ratio.loc[:,"count"] = df_data["count"]
             df_data_ratio.loc[:,"sum_w"] = df_data["sum_w"]/df_mc_sum["sum_w"].values
             df_data_ratio.loc[:,"sum_ww"] = df_data["sum_ww"]/df_mc_sum["sum_w"].values**2
             data(ax[1], df_data_ratio, label, bins, data_kw=kwargs)
