@@ -98,7 +98,10 @@ def data(ax, df, label, bins, data_kw={}):
         **kwargs,
     )
 
-def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
+def mc(
+    ax, df, label, bins, 
+    mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}, zorder=0,
+):
     bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
 
     # preprocess mc
@@ -116,6 +119,7 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
     kwargs = dict(
         label=procs.replace(proc_kw.get("labels", {})),
         color=procs.apply(lambda x: proc_kw.get("colours", {}).get(x, "blue")),
+        zorder=zorder,
     )
     kwargs.update(mc_kw)
     ax.hist([bin_cents]*tdf.shape[1], bins=bin_edges, weights=tdf.T, **kwargs)
@@ -137,15 +141,23 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
         )
 
 def data_mc(
-    ax, df_data, df_mc, label, bins, blind=False, log=True, legend=True,
+    ax, df_data, df_mc, label, bins, sigs=[], blind=False, log=True, legend=True,
     ratio=True, sm_total=True, mcstat_top=False, add_ratios=True, mc_kw={},
-    mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={}, legend_kw={}, cms_kw={},
+    sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={}, legend_kw={}, 
+    cms_kw={},
 ):
     if blind:
         df_data = df_data*0.
 
+    # collect signals if set
+    sigs = sigs[::-1]
+    sig_mask = ~df_mc.index.get_level_values("parent").isin(sigs)
+    df_sig = df_mc.loc[~sig_mask].copy(deep=True)
+
+    df_mc_sm = df_mc.loc[sig_mask].copy(deep=True)
+
     # preprocessing
-    df_mc_sum = df_mc.groupby(label).sum()
+    df_mc_sum = df_mc_sm.groupby(label).sum()
     df_mc_sum.loc[:,"parent"] = "SMTotal"
     df_mc_sum = df_mc_sum.groupby(["parent", label]).sum()
 
@@ -156,11 +168,20 @@ def data_mc(
     bin_edges, _ = bin_lows_to_edges_cents(bins)
     ax[0].set_xlim(bin_edges.min(), bin_edges.max())
 
+    # signals - top panel
+    sig_kw_ = dict(histtype='step', zorder=1)
+    sig_kw_.update(sig_kw)
+    if len(sigs) > 0:
+        mc(
+            ax[0], df_sig, label, bins, mcstat=False, mc_kw=sig_kw_,
+            proc_kw=proc_kw,
+        )
+
     # MC - top panel
     mc_kw_ = dict(stacked=True)
     mc_kw_.update(mc_kw)
     mc(
-        ax[0], df_mc, label, bins, mcstat=mcstat_top, mc_kw=mc_kw_,
+        ax[0], df_mc_sm, label, bins, mcstat=mcstat_top, mc_kw=mc_kw_,
         proc_kw=proc_kw,
     )
 
