@@ -130,8 +130,7 @@ def mc(
     kwargs.update(mc_kw)
     ax.hist([bin_cents]*tdf.shape[1], bins=bin_edges, weights=tdf.T, **kwargs)
 
-    up = 0.
-    down = 0.
+    up, down = 0., 0.
     if mcstat:
         tdf_ww = pd.pivot_table(
             df, index=label, columns="parent",
