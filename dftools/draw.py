@@ -15,7 +15,7 @@ __all__ = [
     "impacts", "nllscan",
 ]
 
-def cms_label(ax, label, lumi=35.9, energy=13):
+def cms_label(ax, label, lumi=35.9, energy=13, extra_label=""):
     ax.text(
         0, 1, r'$\mathbf{CMS}\ \mathit{'+label+'}$',
         ha='left', va='bottom', transform=ax.transAxes,
@@ -23,6 +23,11 @@ def cms_label(ax, label, lumi=35.9, energy=13):
     ax.text(
         1, 1, r'${:.1f}\ \mathrm{{fb}}^{{-1}}$ ({:.0f} TeV)'.format(lumi, energy),
         ha='right', va='bottom', transform=ax.transAxes,
+    )
+    # label on centre top of axes
+    ax.text(
+        0.5, 1, extra_label,
+        ha='center', va='bottom', transform=ax.transAxes,
     )
 
 def legend_data_mc(
@@ -104,7 +109,7 @@ def data(ax, df, label, bins, data_kw={}):
 def mc(
     ax, df, label, bins,
     mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}, zorder=0,
-    mcsyst=False, mcsyst_kw={},
+    mcsyst=False, mcsyst_kw={}, sort_by_process=True,
 ):
     if mcstat and mcsyst:
         raise NotImplementedError("mcstat and mcsyst not implemented together")
@@ -117,8 +122,9 @@ def mc(
     )
 
     # sort by process total
-    tdf_procsum = tdf.sum(axis=0)
-    tdf = tdf[tdf_procsum.sort_values().index]
+    if sort_by_process:
+        tdf_procsum = tdf.sum(axis=0)
+        tdf = tdf[tdf_procsum.sort_values().index]
 
     # mc
     procs = tdf.columns.to_series()
@@ -201,7 +207,7 @@ def data_mc(
     if len(sigs) > 0:
         mc(
             ax[0], df_sig, label, bins, mcstat=False, mc_kw=sig_kw_,
-            proc_kw=proc_kw,
+            proc_kw=proc_kw, sort_by_process=False,
         )
 
     # MC - top panel
