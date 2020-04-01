@@ -656,6 +656,6 @@ def nllscan(
         )
         kw = dict(ha='left', va='bottom', color='gray')
         kw.update(text_kw)
-        ax.text(pos[0], nsig**2, f'${nsig}\\sigma$', **kw)
+        #ax.text(pos[0], nsig**2, f'${nsig}\\sigma$', **kw)
 
     return pd.DataFrame(outdata)
