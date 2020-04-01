@@ -108,11 +108,13 @@ def data(ax, df, label, bins, data_kw={}):
 
 def mc(
     ax, df, label, bins,
-    mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}, zorder=0,
+    mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={},
     mcsyst=False, mcsyst_kw={}, sort_by_process=True,
 ):
     if mcstat and mcsyst:
         raise NotImplementedError("mcstat and mcsyst not implemented together")
+
+    stacked = mc_kw.pop("stacked") if "stacked" in mc_kw else False
     bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
 
     # preprocess mc
@@ -128,13 +130,24 @@ def mc(
 
     # mc
     procs = tdf.columns.to_series()
-    kwargs = dict(
-        label=procs.replace(proc_kw.get("labels", {})),
-        color=procs.apply(lambda x: proc_kw.get("colours", {}).get(x, "blue")),
-        zorder=zorder,
-    )
-    kwargs.update(mc_kw)
-    ax.hist([bin_cents]*tdf.shape[1], bins=bin_edges, weights=tdf.T, **kwargs)
+
+    cumsum = tdf.iloc[:,0].copy(deep=True)
+    cumsum.values[:] = 0.
+    for idx, proc in enumerate(tdf.columns):
+        if stacked:
+            prev_cumsum = cumsum.copy(deep=True)
+            cumsum += tdf[proc]
+        else:
+            cumsum = tdf[proc]
+
+        color = proc_kw.get("colours", {}).get(proc, "blue")
+        kwargs = {
+            "color": color, "ec": "auto"
+            "label": proc_kw.get("labels", {}).get(proc, proc),
+        }
+        kwargs.update(mc_kw)
+        kwargs["zorder"] = -idx
+        ax.hist(bin_cents, bins=bin_edges, weights=cumsum, **kwargs)
 
     up, down = 0., 0.
     if mcstat:
