@@ -177,7 +177,7 @@ def data_mc(
     sigs=[], blind=False, log=True, legend=True, ratio=True, sm_total=True,
     mcstat_top=False, mcstat=True, add_ratios=True, show_zeros=False,
     mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
-    legend_kw={}, cms_kw={},
+    legend_kw={}, cms_kw={}, interval_func=poisson_interval_with_checks,
 ):
     _df_data = df_data.copy(deep=True)
     _df_mc = df_mc.copy(deep=True)
@@ -216,7 +216,7 @@ def data_mc(
     if len(sigs) > 0:
         mc(
             ax[0], df_sig, label, bins, mcstat=False, mc_kw=sig_kw_,
-            proc_kw=proc_kw,
+            proc_kw=proc_kw, interval_func=interval_func,
         )
 
     # MC - top panel
@@ -224,7 +224,7 @@ def data_mc(
     mc_kw_.update(mc_kw)
     mc(
         ax[0], df_mc_sm, label, bins, mcstat=False,
-        mc_kw=mc_kw_, proc_kw=proc_kw,
+        mc_kw=mc_kw_, proc_kw=proc_kw, interval_func=interval_func,
     )
 
     # SM total - top panel
@@ -235,7 +235,7 @@ def data_mc(
         mcstat_kw_.update(mcstat_kw)
         mc(
             ax[0], df_mc_sum, label, bins, mcstat=mcstat_top, mc_kw=mc_kw_,
-            mcstat_kw=mcstat_kw_, proc_kw=proc_kw,
+            mcstat_kw=mcstat_kw_, proc_kw=proc_kw, interval_func=interval_func,
         )
 
     # Data - top panel
@@ -265,7 +265,7 @@ def data_mc(
 
         mc(
             ax[1], df_mc_sum_ratio, label, bins, mcstat=mcstat, mc_kw=mc_kw_,
-            mcstat_kw=mcstat_kw_, proc_kw=proc_kw,
+            mcstat_kw=mcstat_kw_, proc_kw=proc_kw, interval_func=interval_func,
         )
 
         # Data ratio - bottom panel
