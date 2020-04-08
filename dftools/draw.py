@@ -97,7 +97,7 @@ def data(ax, df, label, bins, data_kw={}):
 
     neff = df["sum_w"]**2 / df["sum_ww"]
     scale = df["sum_w"]/neff
-    mask = df["sum_ww"] == 0.
+    mask = (df["sum_ww"] == 0.)
     neff[mask] = 0.
     scale[mask] = 1.
     down, up = poisson_interval(neff, scale=scale)
@@ -142,11 +142,12 @@ def mc(
 
         color = proc_kw.get("colours", {}).get(proc, "blue")
         kwargs = {
-            "color": color, "ec": "auto"
+            "color": color,
             "label": proc_kw.get("labels", {}).get(proc, proc),
         }
         kwargs.update(mc_kw)
-        kwargs["zorder"] = -idx
+        if stacked:
+            kwargs.update({"ec": color, "lw": 0.1, "zorder": -idx})
         ax.hist(bin_cents, bins=bin_edges, weights=cumsum, **kwargs)
 
     up, down = 0., 0.
@@ -156,7 +157,7 @@ def mc(
             values="sum_ww", aggfunc=np.sum,
         )
         neff = tdf**2 / tdf_ww
-        mask = tdf_ww == 0.
+        mask = (tdf_ww == 0.)
         down_stat, up_stat = poisson_interval(neff, scale=tdf/neff)
         down_stat[mask] = 0.
         up_stat[mask] = np.inf
@@ -215,7 +216,7 @@ def data_mc(
     ax[0].set_xlim(bin_edges.min(), bin_edges.max())
 
     # signals - top panel
-    sig_kw_ = dict(histtype='step', zorder=1)
+    sig_kw_ = dict(histtype='step', zorder=10)
     sig_kw_.update(sig_kw)
     if len(sigs) > 0:
         mc(
@@ -647,8 +648,8 @@ def nllscan(
 
         kw = dict(lw=1, ls='--', color='gray')
         kw.update(line_kw)
-        ax.axvline(left.root, **kw)
-        ax.axvline(right.root, **kw)
+        ax.plot((left.root, left.root), (0., nsig**2), **kw)
+        ax.plot((right.root, right.root), (0., nsig**2), **kw)
         ax.axhline(nsig**2, **kw)
 
         pos = ax.transData.inverted().transform(
