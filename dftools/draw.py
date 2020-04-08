@@ -125,7 +125,7 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
 
         color = proc_kw.get("colours", {}).get(proc, "blue")
         kwargs = {
-            "color": color, "ec": "auto"
+            "color": color, "ec": color,
             "label": proc_kw.get("labels", {}).get(proc, proc),
         }
         kwargs.update(mc_kw)
