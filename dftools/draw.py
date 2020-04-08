@@ -90,18 +90,30 @@ def data(ax, df, label, bins, data_kw={}):
     kwargs = dict(fmt='o', lw=1, color='black', label='Data')
     kwargs.update(data_kw)
 
+    mask = (df["sum_ww"]==0.)
     neff = df["sum_w"]**2 / df["sum_ww"]
-    scale = df["sum_w"]/neff
-    mask = df["sum_ww"] == 0.
     neff[mask] = 0.
+
+    scale = df["sum_w"]/neff
     scale[mask] = 1.
+
     down, up = poisson_interval(neff, scale=scale)
     ax.errorbar(
         bin_cents, df["sum_w"], yerr=[df["sum_w"]-down, up-df["sum_w"]],
         **kwargs,
     )
 
-def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
+def poisson_interval_with_checks(x, variance):
+    down, up = poisson_interval(x**2/variance, scale=variance/x)
+    mask = (variance==0.)
+    down[mask] = 0.
+    up[mask] = np.inf
+    return down, up
+
+def mc(
+    ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={},
+    zorder=0, interval_func=poisson_interval_with_checks
+):
     stacked = mc_kw.pop("stacked") if "stacked" in mc_kw else False
     bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
 
@@ -129,47 +141,31 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
 
         color = proc_kw.get("colours", {}).get(proc, "blue")
         kwargs = {
-            "color": color, "ec": "auto"
+            "color": color, "ec": color,
             "label": proc_kw.get("labels", {}).get(proc, proc),
         }
         kwargs.update(mc_kw)
         kwargs["zorder"] = -idx
         ax.hist(bin_cents, bins=bin_edges, weights=cumsum, **kwargs)
 
-    up, down = 0., 0.
     if mcstat:
-        tdf_ww = pd.pivot_table(
+        tdf_ww_up = pd.pivot_table(
             df, index=label, columns="parent",
-            values="sum_ww", aggfunc=np.sum,
+            values="sum_ww_up", aggfunc=np.sum,
         )
-        neff = tdf**2 / tdf_ww
-        mask = tdf_ww == 0.
-        down_stat, up_stat = poisson_interval(neff, scale=tdf/neff)
-        down_stat[mask] = 0.
-        up_stat[mask] = np.inf
+        _, up = interval_func(tdf, tdf_ww_up)
+
+        tdf_ww_down = pd.pivot_table(
+            df, index=label, columns="parent",
+            values="sum_ww_down", aggfunc=np.sum,
+        )
+        down, _ = interval_func(tdf, tdf_ww_down)
+
         kwargs = dict(color='black', alpha=0.2)
         kwargs.update(mcstat_kw)
-        up_stat = up_stat - tdf.values
-        down_stat = tdf.values - down_stat
-        up += up_stat[:,0]
-        down += down_stat[:,0]
 
-    if mcsyst:
-        # symmetric systematic unc.
-        tdf_ww = pd.pivot_table(
-            df, index=label, columns="parent",
-            values="sum_ww", aggfunc=np.sum,
-        )
-        down_syst = np.sqrt(tdf_ww).values
-        up_syst = np.sqrt(tdf_ww).values
-        kwargs = dict(color='black', alpha=0.2)
-        kwargs.update(mcsyst_kw)
-        up = np.sqrt(up**2 + up_syst[:,0]**2)
-        down = np.sqrt(down**2 + down_syst[:,0]**2)
-
-    if mcstat or mcsyst:
-        down_fill = tdf.values[:,0] - down
-        up_fill = tdf.values[:,0] + up
+        down_fill = down[:,0]
+        up_fill = up[:,0]
         ax.fill_between(
             bin_edges, list(up_fill)+[up_fill[-1]],
             list(down_fill)+[down_fill[-1]],
@@ -177,17 +173,30 @@ def mc(ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={}):
         )
 
 def data_mc(
-    ax, df_data, df_mc, label, bins, sigs=[], blind=False, log=True, legend=True,
-    ratio=True, sm_total=True, mcstat_top=False, mcstat=True, mcsyst_top=False, 
-    mcsyst=False, add_ratios=True, mc_kw={}, sig_kw={}, mcstat_kw={}, 
-    mcsyst_kw={}, sm_kw={}, data_kw={}, proc_kw={}, legend_kw={}, cms_kw={},
+    ax, df_data, df_mc, label, bins,
+    sigs=[], blind=False, log=True, legend=True, ratio=True, sm_total=True,
+    mcstat_top=False, mcstat=True, add_ratios=True, show_zeros=False,
+    mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
+    legend_kw={}, cms_kw={},
 ):
+    _df_data = df_data.copy(deep=True)
+    _df_mc = df_mc.copy(deep=True)
+
+    if not show_zeros:
+        _df_data.loc[_df_data["sum_w"]==0.,"sum_w"] = np.nan
+
+    # only mc sum_ww can be asymmetric
+    if "sum_ww_up" not in _df_mc:
+        _df_mc["sum_ww_up"] = _df_mc["sum_ww"]
+    if "sum_ww_down" not in _df_mc:
+        _df_mc["sum_ww_down"] = _df_mc["sum_ww"]
+
     # collect signals if set
     sigs = sigs[::-1]
-    sig_mask = ~df_mc.index.get_level_values("parent").isin(sigs)
-    df_sig = df_mc.loc[~sig_mask].copy(deep=True)
+    sig_mask = ~_df_mc.index.get_level_values("parent").isin(sigs)
+    df_sig = _df_mc.loc[~sig_mask].copy(deep=True)
 
-    df_mc_sm = df_mc.loc[sig_mask].copy(deep=True)
+    df_mc_sm = _df_mc.loc[sig_mask].copy(deep=True)
 
     # preprocessing
     df_mc_sum = df_mc_sm.groupby(label).sum()
@@ -225,13 +234,13 @@ def data_mc(
         mcstat_kw_ = dict(label="", color="black", alpha=0.2)
         mcstat_kw_.update(mcstat_kw)
         mc(
-            ax[0], df_mc_sum, label, bins, mcstat=mcstat_top, mcsyst=mcsyst_top,
-            mc_kw=mc_kw_, mcstat_kw=mcstat_kw_, proc_kw=proc_kw,
+            ax[0], df_mc_sum, label, bins, mcstat=mcstat_top, mc_kw=mc_kw_,
+            mcstat_kw=mcstat_kw_, proc_kw=proc_kw,
         )
 
     # Data - top panel
     if not blind:
-        data(ax[0], df_data, label, bins, data_kw=data_kw)
+        data(ax[0], _df_data, label, bins, data_kw=data_kw)
 
     # CMS label - top panel
     kwargs = dict(label="Preliminary", lumi=35.9, energy=13)
@@ -241,33 +250,31 @@ def data_mc(
     # SM total ratio - bottom panel
     df_mc_sum_ratio = df_mc_sum.copy()
     df_mc_sum_ratio.loc[:,"sum_w"] = 1.
-    df_mc_sum_ratio.loc[:,"sum_ww"] = df_mc_sum["sum_ww"]/df_mc_sum["sum_w"]**2
+    df_mc_sum_ratio.loc[:,"sum_ww_up"] = (
+        df_mc_sum["sum_ww_up"]/df_mc_sum["sum_w"]**2
+    )
+    df_mc_sum_ratio.loc[:,"sum_ww_down"] = (
+        df_mc_sum["sum_ww_down"]/df_mc_sum["sum_w"]**2
+    )
 
     if ratio:
         mc_kw_ = dict(label="", histtype='step')
         mc_kw_.update(sm_kw)
-        mcstat_kw_ = dict()
-        mcsyst_kw_ = dict()
-        if mcstat:
-            mcstat_kw_ = dict(label="MC stat. unc.", color="black", alpha=0.2)
-            mcstat_kw_.update(mcstat_kw)
-        if mcsyst:
-            mcsyst_kw_ = dict(label="MC syst. unc.", color="black", alpha=0.2)
-            mcsyst_kw_.update(mcsyst_kw)
+        mcstat_kw_ = dict(label="MC stat. unc.", color="black", alpha=0.2)
+        mcstat_kw_.update(mcstat_kw)
 
         mc(
-            ax[1], df_mc_sum_ratio, label, bins, mcstat=mcstat, mcsyst=mcsyst, 
-            mc_kw=mc_kw_,
-            mcstat_kw=mcstat_kw_, mcsyst_kw=mcsyst_kw_, proc_kw=proc_kw,
+            ax[1], df_mc_sum_ratio, label, bins, mcstat=mcstat, mc_kw=mc_kw_,
+            mcstat_kw=mcstat_kw_, proc_kw=proc_kw,
         )
 
         # Data ratio - bottom panel
         if not blind:
             kwargs = dict(data_kw)
             kwargs["label"] = ""
-            df_data_ratio = df_data.copy()
-            df_data_ratio.loc[:,"sum_w"] = df_data["sum_w"]/df_mc_sum["sum_w"].values
-            df_data_ratio.loc[:,"sum_ww"] = df_data["sum_ww"]/df_mc_sum["sum_w"].values**2
+            df_data_ratio = _df_data.copy()
+            df_data_ratio.loc[:,"sum_w"] = _df_data["sum_w"]/df_mc_sum["sum_w"].values
+            df_data_ratio.loc[:,"sum_ww"] = _df_data["sum_ww"]/df_mc_sum["sum_w"].values**2
             data(ax[1], df_data_ratio, label, bins, data_kw=kwargs)
 
         if legend:
@@ -275,7 +282,7 @@ def data_mc(
             kwargs = dict(labelspacing=0.05)
             kwargs.update(legend_kw)
             legend_data_mc(
-                ax, df_data, df_mc, label, add_ratios=add_ratios,
+                ax, _df_data, _df_mc, label, add_ratios=add_ratios,
                 offaxis=offaxis, legend_kw=kwargs,
             )
 
