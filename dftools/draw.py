@@ -108,6 +108,9 @@ def poisson_interval_with_checks(x, variance):
     mask = (variance==0.)
     down[mask] = 0.
     up[mask] = np.inf
+
+    up = pd.Series(up[:,0], index=x.index)
+    down = pd.Series(down[:,0], index=x.index)
     return down, up
 
 def mc(
@@ -164,11 +167,9 @@ def mc(
         kwargs = dict(color='black', alpha=0.2)
         kwargs.update(mcstat_kw)
 
-        down_fill = down[:,0]
-        up_fill = up[:,0]
         ax.fill_between(
-            bin_edges, list(up_fill)+[up_fill[-1]],
-            list(down_fill)+[down_fill[-1]],
+            bin_edges, list(up)+[list(up)[-1]],
+            list(down)+[list(down)[-1]],
             step='post', **kwargs
         )
 
