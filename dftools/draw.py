@@ -117,7 +117,7 @@ def poisson_interval_with_checks(x, variance):
 
 def mc(
     ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={},
-    zorder=0, interval_func=poisson_interval_with_checks
+    zorder=0, interval_func=poisson_interval_with_checks, sort_by_process=True,
 ):
     stacked = mc_kw.pop("stacked") if "stacked" in mc_kw else False
     bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
@@ -223,7 +223,7 @@ def data_mc(
     if len(sigs) > 0:
         mc(
             ax[0], df_sig, label, bins, mcstat=False, mc_kw=sig_kw_,
-            proc_kw=proc_kw, interval_func=interval_func,
+            proc_kw=proc_kw, interval_func=interval_func, sort_by_process=False,
         )
 
     # MC - top panel
