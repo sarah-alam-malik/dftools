@@ -113,9 +113,6 @@ def poisson_interval_with_checks(x, variance):
     mask = (variance==0.)
     down[mask] = 0.
     up[mask] = np.inf
-
-    up = pd.Series(up[:,0], index=x.index)
-    down = pd.Series(down[:,0], index=x.index)
     return down, up
 
 def mc(
@@ -163,13 +160,13 @@ def mc(
             df, index=label, columns="parent",
             values="sum_ww_up", aggfunc=np.sum,
         )
-        _, up = interval_func(tdf, tdf_ww_up)
+        _, up = interval_func(tdf.values[:,0], tdf_ww_up.values[:,0])
 
         tdf_ww_down = pd.pivot_table(
             df, index=label, columns="parent",
             values="sum_ww_down", aggfunc=np.sum,
         )
-        down, _ = interval_func(tdf, tdf_ww_down)
+        down, _ = interval_func(tdf.values[:,0], tdf_ww_down.values[:,0])
 
         kwargs = dict(color='black', alpha=0.2)
         kwargs.update(mcstat_kw)
