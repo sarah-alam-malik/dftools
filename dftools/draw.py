@@ -158,6 +158,7 @@ def mc(
         kwargs = {
             "color": color, "ec": color,
             "label": proc_kw.get("labels", {}).get(proc, proc),
+            "ls": proc_kw.get("linestyles", {}).get(proc, "-"),
         }
         kwargs.update(mc_kw)
         if stacked:
