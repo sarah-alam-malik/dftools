@@ -32,6 +32,7 @@ def cms_label(ax, label, lumi=35.9, energy=13, extra_label=""):
 
 def legend_data_mc(
     ax, df_data, df_mc, label, add_ratios=True, offaxis=True, legend_kw={},
+    ratio_legend_kw={},
 ):
     handles, labels = ax[0].get_legend_handles_labels()
 
@@ -66,6 +67,14 @@ def legend_data_mc(
     kwargs = dict(legend_kw)
     kwargs_noloc = dict(kwargs)
     kwargs_noloc.pop("loc", None)
+
+    # set ratio_kwargs equal to the legend_kw by default and change if set
+    ratio_kwargs = dict(kwargs)
+    if ratio_legend_kw != {}:
+        ratio_kwargs = dict(ratio_legend_kw)
+        ratio_kwargs_noloc = dict(ratio_kwargs)
+        ratio_kwargs_noloc.pop("loc", None)
+
     if offaxis:
         box = ax[0].get_position()
         ax[0].set_position([box.x0, box.y0, box.width*0.8, box.height])
@@ -79,9 +88,9 @@ def legend_data_mc(
 
     handles, labels = ax[1].get_legend_handles_labels()
     if offaxis:
-        ax[1].legend(handles, labels, bbox_to_anchor=(1, 1), **kwargs_noloc)
+        ax[1].legend(handles, labels, bbox_to_anchor=(1, 1), **ratio_kwargs_noloc)
     else:
-        ax[1].legend(handles, labels, **kwargs)
+        ax[1].legend(handles, labels, **ratio_kwargs)
 
 def bin_lows_to_edges_cents(lows):
     edges = np.array(list(lows)+[2*lows[-1]-lows[-2]])
@@ -183,6 +192,7 @@ def data_mc(
     mcstat_top=False, mcstat=True, add_ratios=True, show_zeros=False,
     mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
     legend_kw={}, cms_kw={}, interval_func=poisson_interval_with_checks,
+    ratio_legend_kw={},
 ):
     _df_data = df_data.copy(deep=True)
     _df_mc = df_mc.copy(deep=True)
@@ -288,7 +298,8 @@ def data_mc(
             kwargs.update(legend_kw)
             legend_data_mc(
                 ax, _df_data, _df_mc, label, add_ratios=add_ratios,
-                offaxis=offaxis, legend_kw=kwargs,
+                offaxis=offaxis, legend_kw=kwargs, 
+                ratio_legend_kw=ratio_legend_kw,
             )
 
     return ax
