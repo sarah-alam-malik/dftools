@@ -226,7 +226,7 @@ def data_mc(
     ax[0].set_xlim(bin_edges.min(), bin_edges.max())
 
     # signals - top panel
-    sig_kw_ = dict(histtype='step', zorder=10)
+    sig_kw_ = dict(histtype='step', zorder=1)
     sig_kw_.update(sig_kw)
     if len(sigs) > 0:
         mc(
