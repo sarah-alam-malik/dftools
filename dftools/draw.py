@@ -193,7 +193,7 @@ def data_mc(
     mcstat_top=False, mcstat=True, add_ratios=True, show_zeros=False,
     mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
     legend_kw={}, cms_kw={}, interval_func=poisson_interval_with_checks,
-    ratio_legend_kw={},
+    ratio_legend_kw={}, mcstat_ratio_kw={},
 ):
     _df_data = df_data.copy(deep=True)
     _df_mc = df_mc.copy(deep=True)
@@ -277,7 +277,7 @@ def data_mc(
         mc_kw_ = dict(label="", histtype='step')
         mc_kw_.update(sm_kw)
         mcstat_kw_ = dict(label="MC stat. unc.", color="black", alpha=0.2)
-        mcstat_kw_.update(mcstat_kw)
+        mcstat_kw_.update(mcstat_ratio_kw)
 
         mc(
             ax[1], df_mc_sum_ratio, label, bins, mcstat=mcstat, mc_kw=mc_kw_,
