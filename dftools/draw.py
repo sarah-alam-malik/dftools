@@ -483,10 +483,11 @@ nuisance_names = {
     "metTrigDoubleElectronSyst": r'$p_{\mathrm{T}}^{\mathrm{miss}}$ trigger ($ee+\mathrm{jets}$)',
 }
 
-def impacts(data, ax=None, converter=nuisance_names):
+def impacts(data, fig=None, ax=None, converter=nuisance_names):
+    if fig is None:
+        fig = plt.figure(figsize=(4,4), dpi=150)
     if ax is None:
-        fig, ax = plt.subplots(
-            figsize=(4,4), dpi=150,
+        ax = fig.subplots(
             ncols=2, nrows=1,
             sharex=False, sharey=True,
             gridspec_kw={"hspace": 0., "wspace": 0.},
@@ -537,7 +538,7 @@ def impacts(data, ax=None, converter=nuisance_names):
     ax[0].set_xticks(np.arange(-(xmax-1), (xmax-1)+0.1, 1.))
     ax[0].set_yticks((x[:-1]+x[1:])/2.)
     labels = [
-        converter.get(l, l.replace("_", " "))
+        converter.get(l, l.replace("_", "\\_"))
         for l in data.index.get_level_values("param").values
     ]
     ax[0].set_yticklabels(labels)
