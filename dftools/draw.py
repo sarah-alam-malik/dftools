@@ -32,6 +32,7 @@ def cms_label(ax, label, lumi=35.9, energy=13, extra_label=""):
 
 def legend_data_mc(
     ax, df_data, df_mc, label, add_ratios=True, offaxis=True, legend_kw={},
+    ratio_legend_kw={},
 ):
     handles, labels = ax[0].get_legend_handles_labels()
 
@@ -66,6 +67,14 @@ def legend_data_mc(
     kwargs = dict(legend_kw)
     kwargs_noloc = dict(kwargs)
     kwargs_noloc.pop("loc", None)
+
+    # set ratio_kwargs equal to the legend_kw by default and change if set
+    ratio_kwargs = dict(kwargs)
+    if ratio_legend_kw != {}:
+        ratio_kwargs = dict(ratio_legend_kw)
+        ratio_kwargs_noloc = dict(ratio_kwargs)
+        ratio_kwargs_noloc.pop("loc", None)
+
     if offaxis:
         box = ax[0].get_position()
         ax[0].set_position([box.x0, box.y0, box.width*0.8, box.height])
@@ -79,17 +88,25 @@ def legend_data_mc(
 
     handles, labels = ax[1].get_legend_handles_labels()
     if offaxis:
-        ax[1].legend(handles, labels, bbox_to_anchor=(1, 1), **kwargs_noloc)
+        ax[1].legend(handles, labels, bbox_to_anchor=(1, 1), **ratio_kwargs_noloc)
     else:
-        ax[1].legend(handles, labels, **kwargs)
+        ax[1].legend(handles, labels, **ratio_kwargs)
 
 def bin_lows_to_edges_cents(lows):
     edges = np.array(list(lows)+[2*lows[-1]-lows[-2]])
     cents = (edges[:-1] + edges[1:])/2.
     return edges, cents
 
-def data(ax, df, label, bins, data_kw={}):
-    bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
+def bin_full_to_edges_cents(full_binning):
+    edges = np.array(list(full_binning))
+    cents = (edges[:-1] + edges[1:])/2.
+    return edges, cents
+
+def data(ax, df, label, bins, variable_bin=False, data_kw={},):
+    if not variable_bin:
+        bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
+    else:
+        bin_edges, bin_cents = bin_full_to_edges_cents(bins)
 
     # draw
     kwargs = dict(fmt='o', lw=1, color='black', label='Data')
@@ -116,11 +133,14 @@ def poisson_interval_with_checks(x, variance):
     return down, up
 
 def mc(
-    ax, df, label, bins, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={},
+    ax, df, label, bins, variable_bin=False, mcstat=False, mc_kw={}, mcstat_kw={}, proc_kw={},
     zorder=0, interval_func=poisson_interval_with_checks, sort_by_process=True,
 ):
     stacked = mc_kw.pop("stacked") if "stacked" in mc_kw else False
-    bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
+    if not variable_bin:
+        bin_edges, bin_cents = bin_lows_to_edges_cents(bins)
+    else:
+        bin_edges, bin_cents = bin_full_to_edges_cents(bins)
 
     # preprocess mc
     tdf = pd.pivot_table(
@@ -149,6 +169,7 @@ def mc(
         kwargs = {
             "color": color, "ec": color,
             "label": proc_kw.get("labels", {}).get(proc, proc),
+            "ls": proc_kw.get("linestyles", {}).get(proc, "-"),
         }
         kwargs.update(mc_kw)
         if stacked:
@@ -183,6 +204,7 @@ def data_mc(
     mcstat_top=False, mcstat=True, add_ratios=True, show_zeros=False,
     mc_kw={}, sig_kw={}, mcstat_kw={}, sm_kw={}, data_kw={}, proc_kw={},
     legend_kw={}, cms_kw={}, interval_func=poisson_interval_with_checks,
+    ratio_legend_kw={}, mcstat_ratio_kw={}, variable_bin=False,
 ):
     _df_data = df_data.copy(deep=True)
     _df_mc = df_mc.copy(deep=True)
@@ -212,15 +234,18 @@ def data_mc(
     if log:
         ax[0].set_yscale('log')
 
-    bin_edges, _ = bin_lows_to_edges_cents(bins)
+    if not variable_bin:
+        bin_edges, _ = bin_lows_to_edges_cents(bins)
+    else:
+        bin_edges, _ = bin_full_to_edges_cents(bins)
     ax[0].set_xlim(bin_edges.min(), bin_edges.max())
 
     # signals - top panel
-    sig_kw_ = dict(histtype='step', zorder=10)
+    sig_kw_ = dict(histtype='step', zorder=1)
     sig_kw_.update(sig_kw)
     if len(sigs) > 0:
         mc(
-            ax[0], df_sig, label, bins, mcstat=False, mc_kw=sig_kw_,
+            ax[0], df_sig, label, bins, variable_bin, mcstat=False, mc_kw=sig_kw_,
             proc_kw=proc_kw, interval_func=interval_func, sort_by_process=False,
         )
 
@@ -228,7 +253,7 @@ def data_mc(
     mc_kw_ = dict(stacked=True)
     mc_kw_.update(mc_kw)
     mc(
-        ax[0], df_mc_sm, label, bins, mcstat=False,
+        ax[0], df_mc_sm, label, bins, variable_bin, mcstat=False,
         mc_kw=mc_kw_, proc_kw=proc_kw, interval_func=interval_func,
     )
 
@@ -239,13 +264,13 @@ def data_mc(
         mcstat_kw_ = dict(label="", color="black", alpha=0.2)
         mcstat_kw_.update(mcstat_kw)
         mc(
-            ax[0], df_mc_sum, label, bins, mcstat=mcstat_top, mc_kw=mc_kw_,
+            ax[0], df_mc_sum, label, bins, variable_bin, mcstat=mcstat_top, mc_kw=mc_kw_,
             mcstat_kw=mcstat_kw_, proc_kw=proc_kw, interval_func=interval_func,
         )
 
     # Data - top panel
     if not blind:
-        data(ax[0], _df_data, label, bins, data_kw=data_kw)
+        data(ax[0], _df_data, label, bins, variable_bin, data_kw=data_kw,)
 
     # CMS label - top panel
     kwargs = dict(label="Preliminary", lumi=35.9, energy=13)
@@ -266,10 +291,10 @@ def data_mc(
         mc_kw_ = dict(label="", histtype='step')
         mc_kw_.update(sm_kw)
         mcstat_kw_ = dict(label="MC stat. unc.", color="black", alpha=0.2)
-        mcstat_kw_.update(mcstat_kw)
+        mcstat_kw_.update(mcstat_ratio_kw)
 
         mc(
-            ax[1], df_mc_sum_ratio, label, bins, mcstat=mcstat, mc_kw=mc_kw_,
+            ax[1], df_mc_sum_ratio, label, bins, variable_bin, mcstat=mcstat, mc_kw=mc_kw_,
             mcstat_kw=mcstat_kw_, proc_kw=proc_kw, interval_func=interval_func,
         )
 
@@ -280,7 +305,7 @@ def data_mc(
             df_data_ratio = _df_data.copy()
             df_data_ratio.loc[:,"sum_w"] = _df_data["sum_w"]/df_mc_sum["sum_w"].values
             df_data_ratio.loc[:,"sum_ww"] = _df_data["sum_ww"]/df_mc_sum["sum_w"].values**2
-            data(ax[1], df_data_ratio, label, bins, data_kw=kwargs)
+            data(ax[1], df_data_ratio, label, bins, variable_bin, data_kw=kwargs)
 
         if legend:
             offaxis = legend_kw.pop("offaxis", True)
@@ -288,7 +313,8 @@ def data_mc(
             kwargs.update(legend_kw)
             legend_data_mc(
                 ax, _df_data, _df_mc, label, add_ratios=add_ratios,
-                offaxis=offaxis, legend_kw=kwargs,
+                offaxis=offaxis, legend_kw=kwargs, 
+                ratio_legend_kw=ratio_legend_kw,
             )
 
     return ax
